@@ -1,8 +1,18 @@
-'use client'
+// Static page for build export
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+// Export generateStaticParams for static site generation
+export function generateStaticParams() {
+  // Add payment IDs to pre-render at build time
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' }
+  ]
+}
 
 export default function PaymentDetailPage({ params }: { params: { id: string } }) {
   // Mock payment data

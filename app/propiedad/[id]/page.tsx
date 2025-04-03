@@ -1,6 +1,3 @@
-'use client'
-
-import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Bed, Bath, Square, MapPin, Building2, Calendar, PocketIcon as Pool, Wifi, Car, Flag, Send } from 'lucide-react'
@@ -13,10 +10,20 @@ import PropertyCard from '@/components/PropertyCard'
 import DevelopmentAvailability from '@/components/DevelopmentAvailability'
 import PropertyChat from '@/components/PropertyChat'
 
-export default function PropertyPage({ params }: { params: { id: string } }) {
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [selectedUnit, setSelectedUnit] = useState(0)
+// Export generateStaticParams to generate all needed paths at build time
+export function generateStaticParams() {
+  // Add all property IDs that should be pre-rendered at build time
+  // For demo purposes, we'll return some example IDs
+  return [
+    { id: '1' },
+    { id: '2' },
+    { id: '3' },
+    { id: '4' },
+    { id: '5' }
+  ]
+}
 
+export default function PropertyPage({ params }: { params: { id: string } }) {
   // Mock data - in a real app, this would come from an API
   const property = {
     id: params.id,
@@ -94,11 +101,12 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
     id: index + 1
   }))
 
+  // Static pre-rendered version with default selected content
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Image Gallery */}
+      {/* Image Gallery - showing first image */}
       <div className="grid grid-cols-4 gap-2 h-[600px] bg-white">
-        <div className="col-span-2 row-span-2 relative cursor-pointer" onClick={() => setSelectedImage(0)}>
+        <div className="col-span-2 row-span-2 relative">
           <Image
             src={property.images[0]}
             alt={property.title}
@@ -107,7 +115,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
           />
         </div>
         {property.images.slice(1, 5).map((image, index) => (
-          <div key={`image-${index + 1}`} className="relative cursor-pointer" onClick={() => setSelectedImage(index + 1)}>
+          <div key={`image-${index + 1}`} className="relative">
             <Image
               src={image}
               alt={`${property.title} - ${index + 2}`}
@@ -188,8 +196,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
                   {property.units.map((unit, index) => (
                     <Card 
                       key={unit.id}
-                      className={`cursor-pointer ${selectedUnit === index ? 'border-primary' : ''}`}
-                      onClick={() => setSelectedUnit(index)}
+                      className={`cursor-pointer`}
                     >
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-4">

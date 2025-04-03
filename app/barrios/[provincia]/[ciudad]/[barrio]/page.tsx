@@ -1,6 +1,3 @@
-'use client'
-
-import { useState } from 'react'
 import { Bike, Building2, GraduationCap, MapPin, TreesIcon as Tree, Hospital, Bus, Info } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,6 +9,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+// Export generateStaticParams for static site generation
+export function generateStaticParams() {
+  // Add all neighborhood parameters that should be pre-rendered
+  // For demo purposes, we'll return some example values
+  return [
+    { provincia: 'buenos-aires', ciudad: 'capital-federal', barrio: 'palermo' },
+    { provincia: 'buenos-aires', ciudad: 'capital-federal', barrio: 'belgrano' },
+    { provincia: 'buenos-aires', ciudad: 'capital-federal', barrio: 'recoleta' }
+  ]
+}
+
 interface NeighborhoodPageProps {
   params: {
     provincia: string
@@ -20,13 +28,8 @@ interface NeighborhoodPageProps {
   }
 }
 
+// This is a static page that gets pre-rendered at build time
 export default function NeighborhoodPage({ params }: NeighborhoodPageProps) {
-  const [mapLayers, setMapLayers] = useState({
-    ciclovias: false,
-    subte: false,
-    educacion: false
-  })
-
   // Mock data - en una aplicación real vendría de una API
   const neighborhoodData = {
     name: 'Palermo',
@@ -71,14 +74,23 @@ export default function NeighborhoodPage({ params }: NeighborhoodPageProps) {
           <h1 className="text-4xl font-bold mb-4">{neighborhoodData.name}</h1>
           <p className="text-xl text-gray-600 mb-8">{neighborhoodData.description}</p>
 
-          <Tabs defaultValue="about" className="mb-8">
-            <TabsList>
-              <TabsTrigger value="about">Sobre el barrio</TabsTrigger>
-              <TabsTrigger value="map">Mapa</TabsTrigger>
-              <TabsTrigger value="stats">Estadísticas</TabsTrigger>
-            </TabsList>
+          {/* Static pre-rendered tabs with default content */}
+          <div className="mb-8">
+            <div className="border-b">
+              <div className="flex">
+                <div className="px-4 py-2 text-sm font-medium text-primary border-b-2 border-primary">
+                  Sobre el barrio
+                </div>
+                <div className="px-4 py-2 text-sm font-medium text-gray-500">
+                  Mapa
+                </div>
+                <div className="px-4 py-2 text-sm font-medium text-gray-500">
+                  Estadísticas
+                </div>
+              </div>
+            </div>
             
-            <TabsContent value="about">
+            <div className="mt-4">
               <Card>
                 <CardContent className="p-6">
                   <img
@@ -89,111 +101,12 @@ export default function NeighborhoodPage({ params }: NeighborhoodPageProps) {
                   <p className="text-gray-600">{neighborhoodData.about}</p>
                 </CardContent>
               </Card>
-            </TabsContent>
+            </div>
+          </div>
 
-            <TabsContent value="map">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex gap-4 mb-4">
-                    <label className="flex items-center gap-2">
-                      <Checkbox
-                        checked={mapLayers.ciclovias}
-                        onCheckedChange={(checked) => 
-                          setMapLayers(prev => ({ ...prev, ciclovias: checked as boolean }))
-                        }
-                      />
-                      <span>Ciclovías</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <Checkbox
-                        checked={mapLayers.subte}
-                        onCheckedChange={(checked) => 
-                          setMapLayers(prev => ({ ...prev, subte: checked as boolean }))
-                        }
-                      />
-                      <span>Estaciones de Subte</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <Checkbox
-                        checked={mapLayers.educacion}
-                        onCheckedChange={(checked) => 
-                          setMapLayers(prev => ({ ...prev, educacion: checked as boolean }))
-                        }
-                      />
-                      <span>Establecimientos Educativos</span>
-                    </label>
-                  </div>
-                  <div className="h-[400px] bg-gray-100 rounded-lg">
-                    {/* Aquí iría el mapa */}
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      Mapa interactivo
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="stats">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-6 flex flex-col items-center justify-center">
-                    <h3 className="text-xl font-bold mb-4 text-center">Rentabilidad del Alquiler</h3>
-                    <div className="space-y-4 text-center">
-                      <div>
-                        <p className="text-sm text-gray-500">Retorno bruto</p>
-                        <p className="text-2xl font-bold text-green-500">
-                          {neighborhoodData.stats.rental.gross}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Mensual</p>
-                        <p className="text-2xl font-bold text-red-500">
-                          {neighborhoodData.stats.rental.monthly}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Anual</p>
-                        <p className="text-2xl font-bold text-green-500">
-                          {neighborhoodData.stats.rental.annual}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6 flex flex-col items-center justify-center">
-                    <h3 className="text-xl font-bold mb-4 text-center">Valor del m²</h3>
-                    <p className="text-3xl font-bold text-primary">
-                      {neighborhoodData.stats.pricePerM2}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6 flex flex-col items-center justify-center">
-                    <h3 className="text-xl font-bold mb-4 text-center">Demografía</h3>
-                    <div className="space-y-4 text-center">
-                      <div>
-                        <p className="text-sm text-gray-500">Población</p>
-                        <p className="text-2xl font-bold">{neighborhoodData.stats.population.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Densidad (hab/km²)</p>
-                        <p className="text-2xl font-bold">{neighborhoodData.stats.density.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Edad promedio</p>
-                        <p className="text-2xl font-bold">{neighborhoodData.stats.averageAge}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-
+          {/* Static stats display */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {/* Infrastructure stats cards */}
             <TooltipProvider>
               <Card>
                 <CardContent className="p-4 flex flex-col items-center gap-3">
