@@ -59,22 +59,9 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">Dar de Alta</Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => router.push('/admin/barrios/nuevo')}>
-                    Barrio
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/admin/simulaciones/nueva')}>
-                    Crédito
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/admin/propiedades/nueva')}>
-                    Inmueble
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button variant="outline" onClick={() => router.push('/admin')}>
+                Admin
+              </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -142,29 +129,13 @@ export default function Navbar() {
               </Link>
             ))}
             {isAuthenticated && (
-              <>
-                <Link
-                  href="/admin/barrios/nuevo"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Dar de Alta Barrio
-                </Link>
-                <Link
-                  href="/admin/simulaciones/nueva"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Dar de Alta Crédito
-                </Link>
-                <Link
-                  href="/admin/propiedades/nueva"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Dar de Alta Inmueble
-                </Link>
-              </>
+              <Link
+                href="/admin"
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Panel Admin
+              </Link>
             )}
             {isAuthenticated ? (
               <>
