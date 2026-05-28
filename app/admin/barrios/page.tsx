@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,71 +15,61 @@ import {
 } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-
-// Datos de ejemplo para barrios
-const barriosEjemplo = [
-  { 
-    id: '1', 
-    nombre: 'Palermo', 
-    ciudad: 'Buenos Aires', 
-    provincia: 'Buenos Aires',
-    descripcion: 'Barrio bohemio y cultural de Buenos Aires', 
-    nivelSocioeconomico: 'Alto' 
-  },
-  { 
-    id: '2', 
-    nombre: 'Recoleta', 
-    ciudad: 'Buenos Aires', 
-    provincia: 'Buenos Aires',
-    descripcion: 'Barrio elegante y tradicional de Buenos Aires', 
-    nivelSocioeconomico: 'Alto' 
-  },
-  { 
-    id: '3', 
-    nombre: 'Nueva Córdoba', 
-    ciudad: 'Córdoba', 
-    provincia: 'Córdoba',
-    descripcion: 'Barrio universitario y moderno', 
-    nivelSocioeconomico: 'Medio-Alto' 
-  },
-  { 
-    id: '4', 
-    nombre: 'Fisherton', 
-    ciudad: 'Rosario', 
-    provincia: 'Santa Fe',
-    descripcion: 'Barrio residencial de casas bajas', 
-    nivelSocioeconomico: 'Medio-Alto' 
-  },
-]
-
-// Datos de ejemplo para ciudades (para el selector)
-const ciudadesEjemplo = [
-  { id: '1', nombre: 'Buenos Aires', provincia: 'Buenos Aires' },
-  { id: '2', nombre: 'La Plata', provincia: 'Buenos Aires' },
-  { id: '3', nombre: 'Córdoba', provincia: 'Córdoba' },
-  { id: '4', nombre: 'Rosario', provincia: 'Santa Fe' },
-  { id: '5', nombre: 'Mendoza', provincia: 'Mendoza' },
-]
+import {
+  getBarrios,
+  crearBarrio,
+  actualizarBarrio,
+  eliminarBarrio,
+  getCiudades,
+  Barrio,
+  Ciudad
+} from '@/lib/db-admin'
 
 export default function BarriosPage() {
-  const [barrios, setBarrios] = useState(barriosEjemplo)
+  const [barrios, setBarrios] = useState<Barrio[]>([])
+  const [ciudades, setCiudades] = useState<Ciudad[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [modalAbierto, setModalAbierto] = useState(false)
-  const [barrioActual, setBarrioActual] = useState({ 
+  const [barrioActual, setBarrioActual] = useState<Barrio>({ 
     id: '', 
     nombre: '', 
-    ciudad: '', 
-    provincia: '', 
-    descripcion: '',
-    nivelSocioeconomico: ''
+    ciudadId: '', 
+    ciudadNombre: '',
+    provinciaId: '',
+    provinciaNombre: ''
   })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  // Cargar barrios y ciudades
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true)
+        const [barriosData, ciudadesData] = await Promise.all([
+          getBarrios(),
+          getCiudades()
+        ])
+        setBarrios(barriosData)
+        setCiudades(ciudadesData)
+      } catch (error) {
+        console.error('Error al cargar datos:', error)
+        toast.error('Error al cargar los datos')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Filtrar barrios por búsqueda
   const barriosFiltrados = barrios.filter(
     (barrio) =>
       barrio.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      barrio.ciudad.toLowerCase().includes(busqueda.toLowerCase()) ||
-      barrio.provincia.toLowerCase().includes(busqueda.toLowerCase())
+      (barrio.ciudadNombre?.toLowerCase().includes(busqueda.toLowerCase()) || '') ||
+      (barrio.provinciaNombre?.toLowerCase().includes(busqueda.toLowerCase()) || '')
   )
 
   // Función para abrir modal de nuevo barrio
@@ -87,58 +77,100 @@ export default function BarriosPage() {
     setBarrioActual({ 
       id: '', 
       nombre: '', 
-      ciudad: '', 
-      provincia: '', 
-      descripcion: '',
-      nivelSocioeconomico: ''
+      ciudadId: '', 
+      ciudadNombre: '',
+      provinciaId: '',
+      provinciaNombre: ''
     })
     setModalAbierto(true)
   }
 
   // Función para abrir modal de edición
-  const abrirModalEditar = (barrio) => {
+  const abrirModalEditar = (barrio: Barrio) => {
     setBarrioActual(barrio)
     setModalAbierto(true)
   }
 
-  // Función para eliminar barrio (solo de muestra)
-  const eliminarBarrio = (id) => {
+  // Función para eliminar barrio
+  const handleEliminarBarrio = async (id: string) => {
     if (confirm('¿Está seguro que desea eliminar este barrio?')) {
-      setBarrios(barrios.filter((barrio) => barrio.id !== id))
+      try {
+        setIsDeleting(id)
+        await eliminarBarrio(id)
+        setBarrios(barrios.filter((barrio) => barrio.id !== id))
+        toast.success('Barrio eliminado correctamente')
+      } catch (error: any) {
+        console.error('Error al eliminar barrio:', error)
+        toast.error(error.message || 'Error al eliminar el barrio')
+      } finally {
+        setIsDeleting(null)
+      }
     }
   }
 
   // Función para guardar barrio (nuevo o editado)
-  const guardarBarrio = (e) => {
+  const guardarBarrio = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (barrioActual.id) {
-      // Editar existente
-      setBarrios(
-        barrios.map((b) => (b.id === barrioActual.id ? barrioActual : b))
-      )
-    } else {
-      // Crear nuevo con ID generado
-      const nuevoBarrio = {
-        ...barrioActual,
-        id: Date.now().toString(),
-      }
-      setBarrios([...barrios, nuevoBarrio])
+    if (!barrioActual.ciudadId) {
+      toast.error('Debe seleccionar una ciudad')
+      return
     }
     
-    setModalAbierto(false)
-  }
-
-  // Función para actualizar la provincia basada en la ciudad seleccionada
-  const actualizarProvincia = (ciudadNombre) => {
-    const ciudadSeleccionada = ciudadesEjemplo.find(ciudad => ciudad.nombre === ciudadNombre)
-    
-    if (ciudadSeleccionada) {
-      setBarrioActual({
-        ...barrioActual,
-        ciudad: ciudadNombre,
-        provincia: ciudadSeleccionada.provincia
-      })
+    try {
+      setIsSaving(true)
+      
+      if (barrioActual.id) {
+        // Editar existente
+        await actualizarBarrio(barrioActual.id, {
+          nombre: barrioActual.nombre,
+          ciudadId: barrioActual.ciudadId
+        })
+        
+        // Actualizar la lista local
+        const ciudadSeleccionada = ciudades.find(c => c.id === barrioActual.ciudadId)
+        const barrioActualizado = {
+          ...barrioActual,
+          ciudadNombre: ciudadSeleccionada?.nombre || '',
+          provinciaId: ciudadSeleccionada?.provinciaId || '',
+          provinciaNombre: ciudadSeleccionada?.provinciaNombre || ''
+        }
+        
+        setBarrios(
+          barrios.map((b) => (b.id === barrioActual.id ? barrioActualizado : b))
+        )
+        
+        toast.success('Barrio actualizado correctamente')
+      } else {
+        // Crear nuevo
+        const id = await crearBarrio({
+          nombre: barrioActual.nombre,
+          ciudadId: barrioActual.ciudadId,
+          provinciaId: '', // Este valor será rellenado por la función crearBarrio
+          provinciaNombre: ''
+        })
+        
+        // Obtener datos de la ciudad seleccionada
+        const ciudadSeleccionada = ciudades.find(c => c.id === barrioActual.ciudadId)
+        
+        const nuevoBarrio = {
+          ...barrioActual,
+          id,
+          ciudadNombre: ciudadSeleccionada?.nombre || '',
+          provinciaId: ciudadSeleccionada?.provinciaId || '',
+          provinciaNombre: ciudadSeleccionada?.provinciaNombre || ''
+        }
+        
+        setBarrios([...barrios, nuevoBarrio])
+        toast.success('Barrio creado correctamente')
+      }
+      
+      setModalAbierto(false)
+    } catch (error) {
+      console.error('Error al guardar barrio:', error)
+      toast.error('Error al guardar el barrio')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -160,53 +192,62 @@ export default function BarriosPage() {
         />
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Ciudad</TableHead>
-              <TableHead>Provincia</TableHead>
-              <TableHead>Nivel Socioeconómico</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {barriosFiltrados.length > 0 ? (
-              barriosFiltrados.map((barrio) => (
-                <TableRow key={barrio.id}>
-                  <TableCell className="font-medium">{barrio.nombre}</TableCell>
-                  <TableCell>{barrio.ciudad}</TableCell>
-                  <TableCell>{barrio.provincia}</TableCell>
-                  <TableCell>{barrio.nivelSocioeconomico}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => abrirModalEditar(barrio)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => eliminarBarrio(barrio.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Ciudad</TableHead>
+                <TableHead>Provincia</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {barriosFiltrados.length > 0 ? (
+                barriosFiltrados.map((barrio) => (
+                  <TableRow key={barrio.id}>
+                    <TableCell className="font-medium">{barrio.nombre}</TableCell>
+                    <TableCell>{barrio.ciudadNombre}</TableCell>
+                    <TableCell>{barrio.provinciaNombre}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => abrirModalEditar(barrio)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEliminarBarrio(barrio.id!)}
+                        disabled={isDeleting === barrio.id}
+                      >
+                        {isDeleting === barrio.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6">
+                    No se encontraron barrios
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-6">
-                  No se encontraron barrios
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Modal para agregar/editar barrio */}
       {modalAbierto && (
@@ -234,65 +275,20 @@ export default function BarriosPage() {
                   Ciudad
                 </label>
                 <Select 
-                  value={barrioActual.ciudad} 
-                  onValueChange={actualizarProvincia}
+                  value={barrioActual.ciudadId} 
+                  onValueChange={(ciudadId) => setBarrioActual({ ...barrioActual, ciudadId })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar ciudad" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ciudadesEjemplo.map((ciudad) => (
-                      <SelectItem key={ciudad.id} value={ciudad.nombre}>
-                        {ciudad.nombre}
+                    {ciudades.map((ciudad) => (
+                      <SelectItem key={ciudad.id} value={ciudad.id!}>
+                        {ciudad.nombre} ({ciudad.provinciaNombre})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="provincia" className="block font-medium">
-                  Provincia
-                </label>
-                <Input
-                  id="provincia"
-                  value={barrioActual.provincia}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="nivelSocioeconomico" className="block font-medium">
-                  Nivel Socioeconómico
-                </label>
-                <Select 
-                  value={barrioActual.nivelSocioeconomico} 
-                  onValueChange={(nivel) => setBarrioActual({ ...barrioActual, nivelSocioeconomico: nivel })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar nivel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Alto">Alto</SelectItem>
-                    <SelectItem value="Medio-Alto">Medio-Alto</SelectItem>
-                    <SelectItem value="Medio">Medio</SelectItem>
-                    <SelectItem value="Medio-Bajo">Medio-Bajo</SelectItem>
-                    <SelectItem value="Bajo">Bajo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="descripcion" className="block font-medium">
-                  Descripción
-                </label>
-                <Textarea
-                  id="descripcion"
-                  value={barrioActual.descripcion}
-                  onChange={(e) => setBarrioActual({ ...barrioActual, descripcion: e.target.value })}
-                  rows={3}
-                />
               </div>
               
               <div className="flex justify-end gap-2 mt-6">
@@ -300,10 +296,20 @@ export default function BarriosPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setModalAbierto(false)}
+                  disabled={isSaving}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Guardar</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar'
+                  )}
+                </Button>
               </div>
             </form>
           </div>

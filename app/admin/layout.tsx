@@ -1,17 +1,35 @@
-import { ReactNode } from 'react'
+'use client'
+
+import { ReactNode, useEffect } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Building, MapPin, Landmark, Users } from 'lucide-react'
-
-// Mock function to check if user is admin
-const isUserAdmin = () => {
-  // In a real app, this would check the user's session or make an API call
-  return true // Change this to false to test the redirect
-}
+import { Home, Building, MapPin, Landmark, Users, UserCog } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
+import { toast } from 'sonner'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  if (!isUserAdmin()) {
-    redirect('/')
+  const { user, loading } = useAuth()
+
+  // Verificar si el usuario tiene permisos para acceder al panel
+  useEffect(() => {
+    if (!loading && (!user || user.role !== 'admin')) {
+      toast.error('No tienes permiso para acceder al panel de administración')
+      redirect('/')
+    }
+  }, [user, loading])
+
+  // Mostrar estado de carga
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    )
+  }
+
+  // Si el usuario no está autenticado o no es admin, no mostramos nada (el useEffect redirigirá)
+  if (!user || user.role !== 'admin') {
+    return null
   }
 
   return (
@@ -57,6 +75,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Link href="/admin/vendedores" className="flex items-center p-2 rounded-md hover:bg-gray-100">
                 <Users className="w-5 h-5 mr-3" />
                 <span>Agentes Inmobiliarios</span>
+              </Link>
+            </li>
+            <li>
+              <Link href="/admin/usuarios" className="flex items-center p-2 rounded-md hover:bg-gray-100">
+                <UserCog className="w-5 h-5 mr-3" />
+                <span>Administrar Usuarios</span>
               </Link>
             </li>
           </ul>

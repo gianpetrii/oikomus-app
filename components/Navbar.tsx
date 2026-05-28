@@ -1,34 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useRouter } from 'next/navigation'
-import { Menu, X, User } from 'lucide-react'
+import { Menu, X, User, LogOut, Settings, Home, UserCheck, UserPlus } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from '@/lib/auth-context'
+import { toast } from 'sonner'
 
-const navItems = [
+// Definir los enlaces de navegación para cada tipo de usuario
+const publicNavItems = [
   { name: 'Inicio', href: '/' },
   { name: 'Comprar', href: '/search' },
   { name: 'Ubicaciones', href: '/barrios' },
   { name: 'Simulador', href: '/simulador' },
+];
+
+const userNavItems = [
+  ...publicNavItems,
   { name: 'Mis Financiamientos', href: '/mis-financiamientos' },
-]
+];
 
-// Mock auth state - en una aplicación real vendría de un contexto de autenticación
-const isAuthenticated = true // Cambia esto a false para probar el estado no autenticado
-
+const agentNavItems = [
+  ...userNavItems,
+  { name: 'Mis Propiedades', href: '/mis-propiedades' },
+];
 
 export default function Navbar() {
   const router = useRouter()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, logout, loading } = useAuth()
+
+  // Determinar los elementos de navegación según el rol del usuario
+  const getNavItems = () => {
+    if (!user) return publicNavItems;
+    if (user.role === 'admin' || user.role === 'agent') return agentNavItems;
+    return userNavItems;
+  };
+
+  const navItems = getNavItems();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Sesión cerrada correctamente');
+      router.push('/');
+    } catch (error) {
+      console.error('Error al cerrar sesión', error);
+      toast.error('Error al cerrar sesión');
+    }
+  };
 
   return (
     <nav className="bg-white shadow-sm">
@@ -58,7 +88,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated && (
+            {user && user.role === 'admin' && (
               <Button variant="outline" onClick={() => router.push('/admin')}>
                 Admin
               </Button>
@@ -66,26 +96,49 @@ export default function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
+                  {user?.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="Avatar" 
+                      className="h-6 w-6 rounded-full"
+                    />
+                  ) : (
+                    <User className="h-5 w-5" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {isAuthenticated ? (
+                {user ? (
                   <>
-                    <DropdownMenuItem>
-                      <Link href="/perfil" className="w-full">Mi Perfil</Link>
+                    <div className="px-2 py-1.5 text-sm font-medium">
+                      {user.displayName || user.email}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push('/perfil')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Mi Perfil</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <button className="w-full text-left" onClick={() => console.log('Cerrar sesión')}>Cerrar sesión</button>
+                    {user.role === 'agent' && (
+                      <DropdownMenuItem onClick={() => router.push('/mis-propiedades')}>
+                        <Home className="mr-2 h-4 w-4" />
+                        <span>Mis Propiedades</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Cerrar sesión</span>
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <>
-                    <DropdownMenuItem>
-                      <Link href="/login" className="w-full">Iniciar sesión</Link>
+                    <DropdownMenuItem onClick={() => router.push('/login')}>
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      <span>Iniciar sesión</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Link href="/register" className="w-full">Registrarse</Link>
+                    <DropdownMenuItem onClick={() => router.push('/register')}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      <span>Registrarse</span>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -128,7 +181,7 @@ export default function Navbar() {
                 {item.name}
               </Link>
             ))}
-            {isAuthenticated && (
+            {user && user.role === 'admin' && (
               <Link
                 href="/admin"
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
@@ -137,7 +190,7 @@ export default function Navbar() {
                 Panel Admin
               </Link>
             )}
-            {isAuthenticated ? (
+            {user ? (
               <>
                 <Link
                   href="/perfil"
@@ -149,8 +202,8 @@ export default function Navbar() {
                 <button
                   className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                   onClick={() => {
-                    console.log('Cerrar sesión')
-                    setMobileMenuOpen(false)
+                    handleLogout();
+                    setMobileMenuOpen(false);
                   }}
                 >
                   Cerrar sesión

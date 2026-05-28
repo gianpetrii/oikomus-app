@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -10,47 +11,72 @@ import {
   Home,
   TrendingUp,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { getEstadisticas } from '@/lib/db-admin'
+import { toast } from 'sonner'
 
-// Datos simulados para estadísticas
-const estadisticas = {
-  propiedades: {
-    total: 458,
-    activas: 352,
-    pendientes: 42,
-    inactivas: 64,
-    nuevasEstaSemana: 24
-  },
-  agentes: {
-    total: 35,
-    activos: 28,
-    inactivos: 7,
-    nuevosEsteMes: 4
-  },
-  ubicaciones: {
-    provincias: 12,
-    ciudades: 56,
-    barrios: 284
-  },
-  actividad: [
+export default function AdminDashboardPage() {
+  const router = useRouter()
+  const [estadisticas, setEstadisticas] = useState({
+    propiedades: {
+      total: 0,
+      activas: 0,
+      pendientes: 0,
+      inactivas: 0,
+      nuevasEstaSemana: 0
+    },
+    agentes: {
+      total: 0,
+      activos: 0,
+      inactivos: 0,
+      nuevosEsteMes: 0
+    },
+    ubicaciones: {
+      provincias: 0,
+      ciudades: 0,
+      barrios: 0
+    }
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Cargar estadísticas
+  useEffect(() => {
+    const fetchEstadisticas = async () => {
+      try {
+        setIsLoading(true)
+        const data = await getEstadisticas()
+        setEstadisticas(data)
+      } catch (error) {
+        console.error('Error al cargar estadísticas:', error)
+        toast.error('Error al cargar las estadísticas del dashboard')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchEstadisticas()
+  }, [])
+
+  // Datos simulados para la actividad reciente
+  // En una implementación real, esto vendría de la base de datos
+  const actividadReciente = [
     { accion: 'Propiedad agregada', descripcion: 'Apartamento en Palermo', tiempo: '2 horas' },
     { accion: 'Barrio actualizado', descripcion: 'Belgrano', tiempo: '5 horas' },
     { accion: 'Agente desactivado', descripcion: 'Juan Pérez', tiempo: '1 día' },
     { accion: 'Propiedad modificada', descripcion: 'Casa en Nordelta', tiempo: '1 día' },
     { accion: 'Ciudad agregada', descripcion: 'San Carlos de Bariloche', tiempo: '2 días' },
-  ],
-  alertas: [
+  ]
+
+  // Alertas simuladas
+  const alertas = [
     { tipo: 'problema', mensaje: '3 propiedades con datos incompletos' },
     { tipo: 'recordatorio', mensaje: '12 propiedades pendientes de revisión' },
     { tipo: 'info', mensaje: 'Recuerde mantener actualizados los precios' },
   ]
-}
-
-export default function AdminDashboardPage() {
-  const router = useRouter()
 
   // Tarjetas de acceso rápido
   const tarjetasAcceso = [
@@ -90,6 +116,15 @@ export default function AdminDashboardPage() {
       ruta: '/admin/vendedores'
     }
   ]
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+        <p className="text-gray-500">Cargando estadísticas...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -236,7 +271,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {estadisticas.actividad.map((item, index) => (
+              {actividadReciente.map((item, index) => (
                 <div key={index} className="flex justify-between border-b pb-3 last:border-0 last:pb-0">
                   <div>
                     <div className="font-medium">{item.accion}</div>
@@ -255,20 +290,21 @@ export default function AdminDashboardPage() {
           <CardHeader>
             <div className="flex items-center">
               <AlertCircle className="h-5 w-5 mr-2 text-gray-500" />
-              <CardTitle className="text-lg">Alertas y recordatorios</CardTitle>
+              <CardTitle className="text-lg">Alertas y pendientes</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {estadisticas.alertas.map((alerta, index) => (
-                <div key={index} className={`p-3 rounded-lg ${
-                  alerta.tipo === 'problema' 
-                    ? 'bg-red-50 text-red-700' 
-                    : alerta.tipo === 'recordatorio'
-                      ? 'bg-amber-50 text-amber-700'
-                      : 'bg-blue-50 text-blue-700'
-                }`}>
-                  {alerta.mensaje}
+              {alertas.map((alerta, index) => (
+                <div 
+                  key={index} 
+                  className={`border-l-4 px-4 py-3 rounded-r-md ${
+                    alerta.tipo === 'problema' ? 'border-red-500 bg-red-50' : 
+                    alerta.tipo === 'recordatorio' ? 'border-amber-500 bg-amber-50' : 
+                    'border-blue-500 bg-blue-50'
+                  }`}
+                >
+                  <p className="text-sm font-medium">{alerta.mensaje}</p>
                 </div>
               ))}
             </div>

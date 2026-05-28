@@ -1,25 +1,87 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { useAuth } from '@/lib/auth-context'
+import { FcGoogle } from 'react-icons/fc'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
+  const { register, loginWithGoogle, error, clearError, user } = useAuth()
+
+  // Redireccionar si ya está autenticado
+  useEffect(() => {
+    if (user) {
+      router.push('/')
+    }
+  }, [user, router])
+
+  // Mostrar errores
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+      clearError()
+    }
+  }, [error, clearError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Aquí iría la lógica de registro
-    console.log('Registrando usuario:', name, email, password)
-    // Simular registro exitoso
-    router.push('/login')
+    
+    if (!name || !email || !password || !confirmPassword) {
+      toast.error('Por favor complete todos los campos')
+      return
+    }
+    
+    if (password !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    
+    setIsLoading(true)
+    
+    try {
+      await register(name, email, password)
+      toast.success('Cuenta creada exitosamente')
+      router.push('/login')
+    } catch (error) {
+      // Error ya manejado por el contexto
+      console.error('Error al registrar usuario', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true)
+    
+    try {
+      await loginWithGoogle()
+      router.push('/')
+    } catch (error) {
+      // Error ya manejado por el contexto
+      console.error('Error al iniciar sesión con Google', error)
+    } finally {
+      setIsGoogleLoading(false)
+    }
   }
 
   return (
@@ -39,6 +101,7 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -50,6 +113,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -60,15 +124,53 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Registrarse
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando cuenta...</>
+              ) : (
+                'Registrarse'
+              )}
             </Button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-2 text-sm text-gray-500">O continuar con</span>
+            </div>
+          </div>
+
+          <Button 
+            variant="outline" 
+            className="w-full" 
+            onClick={handleGoogleLogin}
+            disabled={isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Conectando...</>
+            ) : (
+              <><FcGoogle className="mr-2 h-5 w-5" /> Google</>
+            )}
+          </Button>
         </CardContent>
         <CardFooter>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 w-full text-center">
             ¿Ya tienes una cuenta?{' '}
             <Link href="/login" className="text-primary hover:underline">
               Inicia sesión

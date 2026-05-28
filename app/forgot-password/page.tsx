@@ -1,21 +1,49 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from '@/lib/auth-context'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const { resetPassword, error, clearError, user } = useAuth()
+
+  // Mostrar errores
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+      clearError()
+    }
+  }, [error, clearError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Aquí iría la lógica para enviar el correo de restablecimiento
-    console.log('Enviando correo de restablecimiento a:', email)
-    setIsSubmitted(true)
+    
+    if (!email) {
+      toast.error('Por favor ingrese su correo electrónico')
+      return
+    }
+    
+    setIsLoading(true)
+    
+    try {
+      await resetPassword(email)
+      setIsSubmitted(true)
+      toast.success('Se ha enviado un correo para restablecer tu contraseña')
+    } catch (error) {
+      // Error ya manejado por el contexto
+      console.error('Error al enviar el correo de restablecimiento', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -36,10 +64,15 @@ export default function ForgotPasswordPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Enviar correo de restablecimiento
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
+                ) : (
+                  'Enviar correo de restablecimiento'
+                )}
               </Button>
             </form>
           ) : (

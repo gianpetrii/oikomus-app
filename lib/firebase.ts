@@ -1,6 +1,16 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut, 
+  sendPasswordResetEmail,
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -19,7 +29,33 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Analytics may not work in SSR, so we need to check if window is defined
-const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Initialize services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
-export { app, analytics }; 
+// Analytics es solo para el lado del cliente
+let analytics = null;
+if (typeof window !== 'undefined') {
+  // Importación dinámica de analytics solo en el cliente
+  import('firebase/analytics').then(module => {
+    const { getAnalytics } = module;
+    analytics = getAnalytics(app);
+  }).catch(err => {
+    console.error('Error cargando analytics:', err);
+  });
+}
+
+export { 
+  app, 
+  analytics, 
+  auth, 
+  db, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  sendPasswordResetEmail, 
+  updateProfile,
+  googleProvider,
+  signInWithPopup
+}; 

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,77 +14,157 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
-// Datos de ejemplo para ciudades
-const ciudadesEjemplo = [
-  { id: '1', nombre: 'Buenos Aires', provincia: 'Buenos Aires', codigoPostal: '1000' },
-  { id: '2', nombre: 'La Plata', provincia: 'Buenos Aires', codigoPostal: '1900' },
-  { id: '3', nombre: 'Córdoba', provincia: 'Córdoba', codigoPostal: '5000' },
-  { id: '4', nombre: 'Rosario', provincia: 'Santa Fe', codigoPostal: '2000' },
-  { id: '5', nombre: 'Mendoza', provincia: 'Mendoza', codigoPostal: '5500' },
-]
-
-// Datos de ejemplo para provincias (para el selector)
-const provinciasEjemplo = [
-  { id: '1', nombre: 'Buenos Aires' },
-  { id: '2', nombre: 'Córdoba' },
-  { id: '3', nombre: 'Santa Fe' },
-  { id: '4', nombre: 'Mendoza' },
-  { id: '5', nombre: 'Tucumán' },
-]
+import {
+  getCiudades,
+  crearCiudad,
+  actualizarCiudad,
+  eliminarCiudad,
+  getProvincias,
+  Ciudad,
+  Provincia
+} from '@/lib/db-admin'
 
 export default function CiudadesPage() {
-  const [ciudades, setCiudades] = useState(ciudadesEjemplo)
+  const [ciudades, setCiudades] = useState<Ciudad[]>([])
+  const [provincias, setProvincias] = useState<Provincia[]>([])
   const [busqueda, setBusqueda] = useState('')
   const [modalAbierto, setModalAbierto] = useState(false)
-  const [ciudadActual, setCiudadActual] = useState({ id: '', nombre: '', provincia: '', codigoPostal: '' })
+  const [ciudadActual, setCiudadActual] = useState<Ciudad>({ 
+    id: '', 
+    nombre: '', 
+    codigo: '', 
+    provinciaId: '',
+    provinciaNombre: ''
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  // Cargar ciudades y provincias
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true)
+        const [ciudadesData, provinciasData] = await Promise.all([
+          getCiudades(),
+          getProvincias()
+        ])
+        setCiudades(ciudadesData)
+        setProvincias(provinciasData)
+      } catch (error) {
+        console.error('Error al cargar datos:', error)
+        toast.error('Error al cargar los datos')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Filtrar ciudades por búsqueda
   const ciudadesFiltradas = ciudades.filter(
     (ciudad) =>
       ciudad.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      ciudad.provincia.toLowerCase().includes(busqueda.toLowerCase()) ||
-      ciudad.codigoPostal.includes(busqueda)
+      (ciudad.provinciaNombre?.toLowerCase().includes(busqueda.toLowerCase()) || '') ||
+      ciudad.codigo.includes(busqueda)
   )
 
   // Función para abrir modal de nueva ciudad
   const abrirModalNueva = () => {
-    setCiudadActual({ id: '', nombre: '', provincia: '', codigoPostal: '' })
+    setCiudadActual({ 
+      id: '', 
+      nombre: '', 
+      codigo: '', 
+      provinciaId: '',
+      provinciaNombre: ''
+    })
     setModalAbierto(true)
   }
 
   // Función para abrir modal de edición
-  const abrirModalEditar = (ciudad) => {
+  const abrirModalEditar = (ciudad: Ciudad) => {
     setCiudadActual(ciudad)
     setModalAbierto(true)
   }
 
-  // Función para eliminar ciudad (solo de muestra)
-  const eliminarCiudad = (id) => {
+  // Función para eliminar ciudad
+  const handleEliminarCiudad = async (id: string) => {
     if (confirm('¿Está seguro que desea eliminar esta ciudad?')) {
-      setCiudades(ciudades.filter((ciudad) => ciudad.id !== id))
+      try {
+        setIsDeleting(id)
+        await eliminarCiudad(id)
+        setCiudades(ciudades.filter((ciudad) => ciudad.id !== id))
+        toast.success('Ciudad eliminada correctamente')
+      } catch (error: any) {
+        console.error('Error al eliminar ciudad:', error)
+        toast.error(error.message || 'Error al eliminar la ciudad')
+      } finally {
+        setIsDeleting(null)
+      }
     }
   }
 
   // Función para guardar ciudad (nueva o editada)
-  const guardarCiudad = (e) => {
+  const guardarCiudad = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (ciudadActual.id) {
-      // Editar existente
-      setCiudades(
-        ciudades.map((c) => (c.id === ciudadActual.id ? ciudadActual : c))
-      )
-    } else {
-      // Crear nueva con ID generado
-      const nuevaCiudad = {
-        ...ciudadActual,
-        id: Date.now().toString(),
-      }
-      setCiudades([...ciudades, nuevaCiudad])
+    if (!ciudadActual.provinciaId) {
+      toast.error('Debe seleccionar una provincia')
+      return
     }
     
-    setModalAbierto(false)
+    try {
+      setIsSaving(true)
+      
+      if (ciudadActual.id) {
+        // Editar existente
+        await actualizarCiudad(ciudadActual.id, {
+          nombre: ciudadActual.nombre,
+          codigo: ciudadActual.codigo,
+          provinciaId: ciudadActual.provinciaId
+        })
+        
+        // Actualizar la lista local
+        const provinciaSeleccionada = provincias.find(p => p.id === ciudadActual.provinciaId)
+        const ciudadActualizada = {
+          ...ciudadActual,
+          provinciaNombre: provinciaSeleccionada?.nombre || ''
+        }
+        
+        setCiudades(
+          ciudades.map((c) => (c.id === ciudadActual.id ? ciudadActualizada : c))
+        )
+        
+        toast.success('Ciudad actualizada correctamente')
+      } else {
+        // Crear nueva
+        const id = await crearCiudad({
+          nombre: ciudadActual.nombre,
+          codigo: ciudadActual.codigo,
+          provinciaId: ciudadActual.provinciaId
+        })
+        
+        // Obtener nombre de la provincia seleccionada
+        const provinciaSeleccionada = provincias.find(p => p.id === ciudadActual.provinciaId)
+        
+        const nuevaCiudad = {
+          ...ciudadActual,
+          id,
+          provinciaNombre: provinciaSeleccionada?.nombre || ''
+        }
+        
+        setCiudades([...ciudades, nuevaCiudad])
+        toast.success('Ciudad creada correctamente')
+      }
+      
+      setModalAbierto(false)
+    } catch (error) {
+      console.error('Error al guardar ciudad:', error)
+      toast.error('Error al guardar la ciudad')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -98,58 +178,69 @@ export default function CiudadesPage() {
 
       <div className="flex justify-between items-center gap-4">
         <Input
-          placeholder="Buscar por nombre, provincia o código postal..."
+          placeholder="Buscar por nombre, provincia o código..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           className="max-w-xs"
         />
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Provincia</TableHead>
-              <TableHead>Código Postal</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ciudadesFiltradas.length > 0 ? (
-              ciudadesFiltradas.map((ciudad) => (
-                <TableRow key={ciudad.id}>
-                  <TableCell className="font-medium">{ciudad.nombre}</TableCell>
-                  <TableCell>{ciudad.provincia}</TableCell>
-                  <TableCell>{ciudad.codigoPostal}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => abrirModalEditar(ciudad)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => eliminarCiudad(ciudad.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Provincia</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ciudadesFiltradas.length > 0 ? (
+                ciudadesFiltradas.map((ciudad) => (
+                  <TableRow key={ciudad.id}>
+                    <TableCell className="font-medium">{ciudad.nombre}</TableCell>
+                    <TableCell>{ciudad.provinciaNombre}</TableCell>
+                    <TableCell>{ciudad.codigo}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => abrirModalEditar(ciudad)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEliminarCiudad(ciudad.id!)}
+                        disabled={isDeleting === ciudad.id}
+                      >
+                        {isDeleting === ciudad.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6">
+                    No se encontraron ciudades
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-6">
-                  No se encontraron ciudades
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Modal para agregar/editar ciudad */}
       {modalAbierto && (
@@ -177,15 +268,15 @@ export default function CiudadesPage() {
                   Provincia
                 </label>
                 <Select 
-                  value={ciudadActual.provincia} 
-                  onValueChange={(provincia) => setCiudadActual({ ...ciudadActual, provincia })}
+                  value={ciudadActual.provinciaId} 
+                  onValueChange={(provinciaId) => setCiudadActual({ ...ciudadActual, provinciaId })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar provincia" />
                   </SelectTrigger>
                   <SelectContent>
-                    {provinciasEjemplo.map((provincia) => (
-                      <SelectItem key={provincia.id} value={provincia.nombre}>
+                    {provincias.map((provincia) => (
+                      <SelectItem key={provincia.id} value={provincia.id!}>
                         {provincia.nombre}
                       </SelectItem>
                     ))}
@@ -194,13 +285,13 @@ export default function CiudadesPage() {
               </div>
               
               <div className="space-y-2">
-                <label htmlFor="codigoPostal" className="block font-medium">
-                  Código Postal
+                <label htmlFor="codigo" className="block font-medium">
+                  Código
                 </label>
                 <Input
-                  id="codigoPostal"
-                  value={ciudadActual.codigoPostal}
-                  onChange={(e) => setCiudadActual({ ...ciudadActual, codigoPostal: e.target.value })}
+                  id="codigo"
+                  value={ciudadActual.codigo}
+                  onChange={(e) => setCiudadActual({ ...ciudadActual, codigo: e.target.value })}
                   required
                 />
               </div>
@@ -210,10 +301,20 @@ export default function CiudadesPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setModalAbierto(false)}
+                  disabled={isSaving}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Guardar</Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar'
+                  )}
+                </Button>
               </div>
             </form>
           </div>

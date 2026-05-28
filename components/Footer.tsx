@@ -9,24 +9,24 @@ const footerSections = {
     { label: 'Simulador', href: '/simulador' },
   ],
   anunciantes: [
-    { label: 'Desarrolladoras', href: '#' },
-    { label: 'Bancos', href: '#' },
-    { label: 'Inmobiliarias', href: '#' },
+    { label: 'Desarrolladoras', href: '/desarrolladoras' },
+    { label: 'Bancos', href: '/bancos' },
+    { label: 'Inmobiliarias', href: '/inmobiliarias' },
   ],
   paises: [
-    { label: 'Brasil: Imovelweb - Wimoveis - CasaMineira - QuintoAndar', href: '#' },
-    { label: 'Mexico: Inmueble24 - Vivanuncios', href: '#' },
-    { label: 'Perú: Urbania - Adondevivir', href: '#' },
-    { label: 'Ecuador: Plusvalia', href: '#' },
-    { label: 'Panamá: Compreoalquile', href: '#' },
+    { label: 'Brasil: Imovelweb - Wimoveis - CasaMineira - QuintoAndar', href: '/brasil' },
+    { label: 'Mexico: Inmueble24 - Vivanuncios', href: '/mexico' },
+    { label: 'Perú: Urbania - Adondevivir', href: '/peru' },
+    { label: 'Ecuador: Plusvalia', href: '/ecuador' },
+    { label: 'Panamá: Compreoalquile', href: '/panama' },
   ],
 }
 
 const socialLinks = [
-  { Icon: Facebook, href: '#' },
-  { Icon: Instagram, href: '#' },
-  { Icon: Youtube, href: '#' },
-  { Icon: Twitter, href: '#' },
+  { name: 'facebook', Icon: Facebook, href: '/facebook' },
+  { name: 'instagram', Icon: Instagram, href: '/instagram' },
+  { name: 'youtube', Icon: Youtube, href: '/youtube' },
+  { name: 'twitter', Icon: Twitter, href: '/twitter' },
 ]
 
 export default function Footer() {
@@ -76,9 +76,9 @@ export default function Footer() {
           <div>
             <h3 className="font-bold mb-4">Seguinos</h3>
             <div className="flex gap-4">
-              {socialLinks.map(({ Icon, href }) => (
+              {socialLinks.map(({ name, Icon, href }) => (
                 <Link
-                  key={href}
+                  key={name}
                   href={href}
                   className="text-gray-600 hover:text-gray-900"
                 >
@@ -96,8 +96,8 @@ export default function Footer() {
               <span>© Copyright 2024 oikomus.com.ar</span>
             </div>
             <div className="flex gap-4">
-              <Link href="#" className="hover:text-gray-900">Términos y Condiciones</Link>
-              <Link href="#" className="hover:text-gray-900">Política de Privacidad</Link>
+              <Link href="/terminos" className="hover:text-gray-900">Términos y Condiciones</Link>
+              <Link href="/privacidad" className="hover:text-gray-900">Política de Privacidad</Link>
             </div>
           </div>
         </div>
